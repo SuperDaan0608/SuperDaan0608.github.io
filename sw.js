@@ -1,4 +1,4 @@
-const CACHE = 'recipe-box-v1';
+const CACHE = 'recipe-box-v2';
 const SHELL = [
   './',
   './index.html',
@@ -32,16 +32,33 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  const isAppShell = url.origin === self.location.origin;
+
+  if (isAppShell) {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE).then(c => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(req).then(hit => {
       if (hit) return hit;
       return fetch(req).then(res => {
-        if (res && res.status === 200 && (url.origin === self.location.origin || url.hostname.includes('fonts.'))) {
+        if (res && res.status === 200 && url.hostname.includes('fonts.')) {
           const copy = res.clone();
           caches.open(CACHE).then(c => c.put(req, copy));
         }
         return res;
-      }).catch(() => caches.match('./index.html'));
+      });
     })
   );
 });
